@@ -2622,8 +2622,6 @@ MQTTStatus_t MQTT_SendConnect( MQTTContext_t * pContext,
   size_t remainingLength = 0UL, packetSize = 0UL;
   MQTTStatus_t status = MQTTSuccess;
 
-  incomingPacket.type = ( uint8_t ) 0;
-
   if( ( pContext == NULL ) || ( pConnectInfo == NULL ) || ( pSessionPresent == NULL ) )
   {
       LogError( ( "Argument cannot be NULL: pContext=%p, "
