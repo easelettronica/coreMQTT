@@ -507,12 +507,29 @@ MQTTStatus_t MQTT_InitStatefulQoS( MQTTContext_t * pContext,
  * @endcode
  */
 /* @[declare_mqtt_connect] */
-MQTTStatus_t MQTT_Connect( MQTTContext_t * pContext,
+MQTTStatus_t MQTT_SendConnect( MQTTContext_t * pContext,
                            const MQTTConnectInfo_t * pConnectInfo,
                            const MQTTPublishInfo_t * pWillInfo,
                            uint32_t timeoutMs,
                            bool * pSessionPresent );
 /* @[declare_mqtt_connect] */
+
+/**
+ * Process the ACK from connection command
+ * @param pContext
+ * @param pConnectInfo
+ * @param pWillInfo
+ * @param timeoutMs
+ * @param pSessionPresent
+ * @return
+ */
+ /* @[MQTT_ProcessConnectAck] */
+MQTTStatus_t MQTT_ProcessConnectAck( MQTTContext_t * pContext,
+                          const MQTTConnectInfo_t * pConnectInfo,
+                          const MQTTPublishInfo_t * pWillInfo,
+                          uint32_t timeoutMs,
+                          bool * pSessionPresent );
+ /* @[MQTT_ProcessConnectAck] */
 
 /**
  * @brief Sends MQTT SUBSCRIBE for the given list of topic filters to

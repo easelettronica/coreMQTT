@@ -2613,84 +2613,105 @@ MQTTStatus_t MQTT_CancelCallback( const MQTTContext_t * pContext,
 
 /*-----------------------------------------------------------*/
 
-MQTTStatus_t MQTT_Connect( MQTTContext_t * pContext,
+MQTTStatus_t MQTT_SendConnect( MQTTContext_t * pContext,
                            const MQTTConnectInfo_t * pConnectInfo,
                            const MQTTPublishInfo_t * pWillInfo,
                            uint32_t timeoutMs,
                            bool * pSessionPresent )
 {
-    size_t remainingLength = 0UL, packetSize = 0UL;
-    MQTTStatus_t status = MQTTSuccess;
-    MQTTPacketInfo_t incomingPacket = { 0 };
+  size_t remainingLength = 0UL, packetSize = 0UL;
+  MQTTStatus_t status = MQTTSuccess;
 
-    incomingPacket.type = ( uint8_t ) 0;
+  incomingPacket.type = ( uint8_t ) 0;
 
-    if( ( pContext == NULL ) || ( pConnectInfo == NULL ) || ( pSessionPresent == NULL ) )
-    {
-        LogError( ( "Argument cannot be NULL: pContext=%p, "
-                    "pConnectInfo=%p, pSessionPresent=%p.",
-                    ( void * ) pContext,
-                    ( void * ) pConnectInfo,
-                    ( void * ) pSessionPresent ) );
-        status = MQTTBadParameter;
-    }
+  if( ( pContext == NULL ) || ( pConnectInfo == NULL ) || ( pSessionPresent == NULL ) )
+  {
+      LogError( ( "Argument cannot be NULL: pContext=%p, "
+                  "pConnectInfo=%p, pSessionPresent=%p.",
+                  ( void * ) pContext,
+                  ( void * ) pConnectInfo,
+                  ( void * ) pSessionPresent ) );
+      status = MQTTBadParameter;
+  }
 
-    if( status == MQTTSuccess )
-    {
-        /* Get MQTT connect packet size and remaining length. */
-        status = MQTT_GetConnectPacketSize( pConnectInfo,
-                                            pWillInfo,
-                                            &remainingLength,
-                                            &packetSize );
-        LogDebug( ( "CONNECT packet size is %lu and remaining length is %lu.",
-                    ( unsigned long ) packetSize,
-                    ( unsigned long ) remainingLength ) );
-    }
+  if( status == MQTTSuccess )
+  {
+      /* Get MQTT connect packet size and remaining length. */
+      status = MQTT_GetConnectPacketSize( pConnectInfo,
+                                          pWillInfo,
+                                          &remainingLength,
+                                          &packetSize );
+      LogDebug( ( "CONNECT packet size is %lu and remaining length is %lu.",
+                  ( unsigned long ) packetSize,
+                  ( unsigned long ) remainingLength ) );
+  }
 
-    if( status == MQTTSuccess )
-    {
-        MQTT_PRE_SEND_HOOK( pContext );
+  if( status == MQTTSuccess )
+  {
+      MQTT_PRE_SEND_HOOK( pContext );
 
-        status = sendConnectWithoutCopy( pContext,
-                                         pConnectInfo,
-                                         pWillInfo,
-                                         remainingLength );
+      status = sendConnectWithoutCopy( pContext,
+                                       pConnectInfo,
+                                       pWillInfo,
+                                       remainingLength );
 
-        MQTT_POST_SEND_HOOK( pContext );
-    }
+      MQTT_POST_SEND_HOOK( pContext );
+  }
 
-    /* Read CONNACK from transport layer. */
-    if( status == MQTTSuccess )
-    {
-        status = receiveConnack( pContext,
-                                 timeoutMs,
-                                 pConnectInfo->cleanSession,
-                                 &incomingPacket,
-                                 pSessionPresent );
-    }
+  return status;
+}
 
-    if( status == MQTTSuccess )
-    {
-        /* Resend PUBRELs when reestablishing a session, or clear records for new sessions. */
-        status = handleSessionResumption( pContext, *pSessionPresent );
-    }
+/**
+ * Process the ACK from connection command
+ * @param pContext
+ * @param pConnectInfo
+ * @param pWillInfo
+ * @param timeoutMs
+ * @param pSessionPresent
+ * @return
+ */
+MQTTStatus_t MQTT_ProcessConnectAck( MQTTContext_t * pContext,
+                          const MQTTConnectInfo_t * pConnectInfo,
+                          const MQTTPublishInfo_t * pWillInfo,
+                          uint32_t timeoutMs,
+                          bool * pSessionPresent )
+{
 
-    if( status == MQTTSuccess )
-    {
-        LogInfo( ( "MQTT connection established with the broker." ) );
-        pContext->connectStatus = MQTTConnected;
-        /* Initialize keep-alive fields after a successful connection. */
-        pContext->keepAliveIntervalSec = pConnectInfo->keepAliveSeconds;
-        pContext->waitingForPingResp = false;
-        pContext->pingReqSendTimeMs = 0U;
-    }
-    else
-    {
-        LogError( ( "MQTT connection failed with status = %s.",
-                    MQTT_Status_strerror( status ) ) );
-    }
+  MQTTStatus_t status = MQTTSuccess;
+  MQTTPacketInfo_t incomingPacket = { 0 };
 
-    return status;
+  /* Read CONNACK from transport layer. */
+  if( status == MQTTSuccess )
+  {
+      status = receiveConnack( pContext,
+                               timeoutMs,
+                               pConnectInfo->cleanSession,
+                               &incomingPacket,
+                               pSessionPresent );
+  }
+
+  if( status == MQTTSuccess )
+  {
+      /* Resend PUBRELs when reestablishing a session, or clear records for new sessions. */
+      status = handleSessionResumption( pContext, *pSessionPresent );
+  }
+
+  if( status == MQTTSuccess )
+  {
+      LogInfo( ( "MQTT connection established with the broker." ) );
+      pContext->connectStatus = MQTTConnected;
+      /* Initialize keep-alive fields after a successful connection. */
+      pContext->keepAliveIntervalSec = pConnectInfo->keepAliveSeconds;
+      pContext->waitingForPingResp = false;
+      pContext->pingReqSendTimeMs = 0U;
+  }
+  else
+  {
+      LogError( ( "MQTT connection failed with status = %s.",
+                  MQTT_Status_strerror( status ) ) );
+  }
+
+  return status;
 }
 
 /*-----------------------------------------------------------*/
